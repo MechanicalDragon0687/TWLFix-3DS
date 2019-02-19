@@ -262,10 +262,10 @@ int main() {
 
 	cout << "\nCreating Broken DSiWare Exports \n";
 	buildBrokenTADfromSource(srcFile.str(),&Breakables,"romfs:/icon.bin");
-	if (StopOrGo("Import DSiWare?\n")) {
+	//if (StopOrGo("Import DSiWare?\n")) {
 		cout << "\n\n\nImporting Broken DSiWare Exports \n\n";
 		importTadList(&Breakables);
-	}
+	//}
 	cout<<"\nDone!\n\nReboot and then open System Update.\nPress Start to reboot.";
 
 	while (aptMainLoop()) {
