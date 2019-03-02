@@ -25,6 +25,40 @@ u8 normalKey_CMAC[0x10]={0};
 u8* ctcert;
 u32 ctcert_size=0;
 
+void initServices() {
+	gfxInitDefault();
+	consoleInit(GFX_TOP, &topScreen);
+	consoleInit(GFX_BOTTOM, &bottomScreen);
+	consoleSelect(&topScreen);
+	cout << "Initializing APT services\n";
+	if (R_FAILED(aptInit())) {
+		error("Failed to initialize APT services\n","main.cpp",true);
+	}
+	cout << "Initializing AM services\n";
+	if (R_FAILED(amInit())) {
+		error("Failed to initialize AM services\n","main.cpp",true);
+	}
+	cout << "Initializing PTM services\n";
+	if (R_FAILED(ptmSysmInit())) {
+		error("Failed to initialize PTM services\n","main.cpp",true);
+	}	
+	cout << "Initializing FS services\n";
+	if (R_FAILED(fsInit())) {
+		error("Unable to initialize FS service\n","main.cpp",true);
+	}	
+	cout <<"Initializing ROMFS services\n"; 
+	if (R_FAILED(romfsInit())) {
+		error("Unable to initialize ROMFS service\n","main.cpp",true);
+	}
+}
+void exitServices() {
+		romfsExit();
+		fsExit();
+		ptmSysmExit();
+		amExit();
+		aptExit();
+		gfxExit();
+}
 void importTadList(std::vector<u64> *tid) {
 	std::stringstream fname("");
 	for (std::vector<u64>::iterator cTID=tid->begin();cTID != tid->end();++cTID) {
@@ -36,7 +70,6 @@ void importTadList(std::vector<u64> *tid) {
 	}
 
 }
-
 void error(string errormsg, string filename, bool fatal) {
 	PrintConsole* oldCon = consoleSelect(&bottomScreen);
 	cout << "\x1b[31m" << errormsg << "!\n\x1b[0m" << filename << "\n" << "Press [START] to exit";
@@ -48,8 +81,8 @@ void error(string errormsg, string filename, bool fatal) {
 			gfxSwapBuffers();
 			gspWaitForVBlank();
 		}
-
-		exit(-1);
+		exitServices();
+		exit(0);
 	}else{
 		consoleSelect(oldCon);
 	}
@@ -154,23 +187,12 @@ int main() {
 	u32 movable_size=0;
 	//std::ios_base::sync_with_stdio(false);
 
-	gfxInitDefault();
-	consoleInit(GFX_TOP, &topScreen);
-	consoleInit(GFX_BOTTOM, &bottomScreen);
-	consoleSelect(&topScreen);
-
 	Result res=0;
 	u64 tid=0;
-	cout << "Initializing APT services\n";
-	aptInit();
+
+	initServices();
+
 	APT_CheckNew3DS(&isN3ds);
-	cout << "Initializing FS services\n";
-	res = fsInit();
-	if (res) {
-		cout << "Unable to initialize FS service\n";
-		StopOrGo(" ");
-		return res;
-	}
 
 	FS_Archive SDMCArchive;
 	FSUSER_OpenArchive(&SDMCArchive, ARCHIVE_SDMC,fsMakePath(PATH_EMPTY, ""));
@@ -187,19 +209,6 @@ int main() {
 	FSUSER_CreateDirectory(SDMCArchive, twlfix_path, 0);
 	FSUSER_CloseArchive(SDMCArchive);
 
-	cout <<"Initializing ROMFS services\n"; 
-	res = romfsInit();
-	if (res) {
-		StopOrGo("Unable to initialize ROMFS service\n");
-		return res;
-	}
-	cout << "Initializing AM services\n";
-	res = amInit();
-	if (res) {
-		StopOrGo("Unable to initialize AM service\n");
-		return res;
-	}
-			svcSleepThread(SECOND(1));
 
 	cout << "\nPress [A] to begin or [Start] to Exit!\n\n";
 	
@@ -207,10 +216,7 @@ int main() {
 		hidScanInput();
 		if (hidKeysDown() & KEY_A) { break; }
 		if (hidKeysDown() & KEY_START) { 
-			amExit();
-			//nsExit();
-			gfxExit();
-			fsExit();	
+			exitServices();
 			return 0;
 		}
 	}
@@ -230,16 +236,8 @@ int main() {
 	keyScrambler((movable + 0x110), true, normalKey_CMAC);
 	free(movable);
 
-	res = DSiDump(&tid); // Dump any dsiware and return the title id
-	if (res) {
-		cout <<"Failed to dump any dsiware, please manually dump the dsiware and use the PC tools.\n"; 
-		while (1) {hidScanInput(); if (hidKeysDown()) { break; } }
-		free(ctcert);
-		aptExit();
-		amExit();
-		gfxExit();
-		fsExit();
-		exit(0);
+	if (R_FAILED(DSiDump(&tid))){ // Dump any dsiware and return the title id
+		error("Failed to dump any dsiware, please manually dump the dsiware and use the PC tools.\n","main.cpp",true); 
 	}
 
 	std::stringstream srcFile("");
@@ -266,7 +264,7 @@ int main() {
 		cout << "\n\n\nImporting Broken DSiWare Exports \n\n";
 		importTadList(&Breakables);
 	//}
-	cout<<"\nDone!\n\nReboot and then open System Update.\nPress Start to reboot.";
+	cout<<"\nDone!\n\nReboot and then open System Update.\nPress Start to reboot.\n";
 
 	while (aptMainLoop()) {
 		hidScanInput();
@@ -276,11 +274,7 @@ int main() {
 		gspWaitForVBlank();
 	} 
 	free(ctcert);
-	APT_HardwareResetAsync();
-	amExit();
-	fsExit();	
-	aptExit();
-	gfxExit();
-
+	PTMSYSM_RebootAsync(0);
+	exitServices();
 	return 0;
 }
