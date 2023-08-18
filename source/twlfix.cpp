@@ -8,7 +8,7 @@
 #include <vector> // vector of u64 for titles
 #include <algorithm> // the copy routines
 #include <cstring>
-#include "crypto.h"
+#include "utils/crypto.h"
 #include "twl.hpp"
 #include "twlfix.hpp"
 

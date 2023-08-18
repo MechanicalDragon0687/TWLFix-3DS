@@ -4,8 +4,8 @@
 #include <iomanip>
 #include <filesystem>
 #include <fstream>
-//#include <unistd.h>
-#include "crypto.h"
+#include <unistd.h>
+#include "utils/crypto.h"
 #include "twl.hpp"
 #include "twlfix.hpp"
 
@@ -33,10 +33,6 @@ void initServices() {
 	cout << "Initializing APT services\n";
 	if (R_FAILED(aptInit())) {
 		error("Failed to initialize APT services\n","main.cpp",true);
-	}
-	cout << "Initializing AM services\n";
-	if (R_FAILED(amInit())) {
-		error("Failed to initialize AM services\n","main.cpp",true);
 	}
 	cout << "Initializing PTM services\n";
 	if (R_FAILED(ptmSysmInit())) {
@@ -182,6 +178,8 @@ bool StopOrGo(string msg) {
 	}
 }
 
+extern "C" int nimhax(void);
+
 int main() {
 	u8 * movable;
 	u32 movable_size=0;
@@ -221,15 +219,27 @@ int main() {
 		}
 	}
 
-	cout << "Loading signing data\n";
-	ctcert = readAllBytes("romfs:/ctcert.bin", ctcert_size);
-	if (ctcert_size != 0x19E) {
-		error("Provided certificate is not 0x19E in size","",true);
+	if(access("sdmc:/movable.sed", F_OK) != 0) {
+		cout << "movable.sed not found, trying nimhax\n";
+		nimhax(); // if this fails, it will exit here
 	}
+
 	cout <<"Reading sdmc:/movable.sed\n"; 
 	movable = readAllBytes("/movable.sed", movable_size);
 	if (movable_size != 320 && movable_size != 288) {
 		error("Provided movable.sed is not the correct size.","",true);
+	}
+
+	// Initialize (reinitialize?) AM here instead, as it conflicts with nimhax
+	cout << "Initializing AM services\n";
+	if (R_FAILED(amInit())) {
+		error("Failed to initialize AM services\n","main.cpp",true);
+	}
+
+	cout << "Loading signing data\n";
+	ctcert = readAllBytes("romfs:/ctcert.bin", ctcert_size);
+	if (ctcert_size != 0x19E) {
+		error("Provided certificate is not 0x19E in size","",true);
 	}
 
 	keyScrambler((movable + 0x110), false, normalKey);
