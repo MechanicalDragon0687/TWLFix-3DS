@@ -34,10 +34,6 @@ void initServices() {
 	if (R_FAILED(aptInit())) {
 		error("Failed to initialize APT services\n","main.cpp",true);
 	}
-	cout << "Initializing AM services\n";
-	if (R_FAILED(amInit())) {
-		error("Failed to initialize AM services\n","main.cpp",true);
-	}
 	cout << "Initializing PTM services\n";
 	if (R_FAILED(ptmSysmInit())) {
 		error("Failed to initialize PTM services\n","main.cpp",true);
@@ -223,12 +219,6 @@ int main() {
 		}
 	}
 
-	cout << "Loading signing data\n";
-	ctcert = readAllBytes("romfs:/ctcert.bin", ctcert_size);
-	if (ctcert_size != 0x19E) {
-		error("Provided certificate is not 0x19E in size","",true);
-	}
-
 	if(access("sdmc:/movable.sed", F_OK) != 0) {
 		cout << "movable.sed not found, trying nimhax\n";
 		nimhax(); // if this fails, it will exit here
@@ -238,6 +228,18 @@ int main() {
 	movable = readAllBytes("/movable.sed", movable_size);
 	if (movable_size != 320 && movable_size != 288) {
 		error("Provided movable.sed is not the correct size.","",true);
+	}
+
+	// Initialize (reinitialize?) AM here instead, as it conflicts with nimhax
+	cout << "Initializing AM services\n";
+	if (R_FAILED(amInit())) {
+		error("Failed to initialize AM services\n","main.cpp",true);
+	}
+
+	cout << "Loading signing data\n";
+	ctcert = readAllBytes("romfs:/ctcert.bin", ctcert_size);
+	if (ctcert_size != 0x19E) {
+		error("Provided certificate is not 0x19E in size","",true);
 	}
 
 	keyScrambler((movable + 0x110), false, normalKey);
