@@ -1,0 +1,5 @@
+build
+*.elf
+*.smdh
+*.3dsx
+romfs/ctcert.bin
