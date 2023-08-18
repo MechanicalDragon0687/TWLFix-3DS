@@ -4,8 +4,8 @@
 #include <iomanip>
 #include <filesystem>
 #include <fstream>
-//#include <unistd.h>
-#include "crypto.h"
+#include <unistd.h>
+#include "utils/crypto.h"
 #include "twl.hpp"
 #include "twlfix.hpp"
 
@@ -182,6 +182,8 @@ bool StopOrGo(string msg) {
 	}
 }
 
+extern "C" int nimhax(void);
+
 int main() {
 	u8 * movable;
 	u32 movable_size=0;
@@ -226,6 +228,12 @@ int main() {
 	if (ctcert_size != 0x19E) {
 		error("Provided certificate is not 0x19E in size","",true);
 	}
+
+	if(access("sdmc:/movable.sed", F_OK) != 0) {
+		cout << "movable.sed not found, trying nimhax\n";
+		nimhax(); // if this fails, it will exit here
+	}
+
 	cout <<"Reading sdmc:/movable.sed\n"; 
 	movable = readAllBytes("/movable.sed", movable_size);
 	if (movable_size != 320 && movable_size != 288) {
